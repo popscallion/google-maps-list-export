@@ -7,7 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
 
 
-def main(list_url, headless):
+def initialize(headless):
     print("Starting driver")
     options = Options()
     options.headless = headless
@@ -15,6 +15,10 @@ def main(list_url, headless):
     driver = Firefox(options=options)
     driver.implicitly_wait(5)
 
+    return driver
+
+
+def load_list(driver, list_url):
     print("Going to Maps")
     driver.get(list_url)
 
@@ -31,6 +35,10 @@ def main(list_url, headless):
         scrollbox.send_keys(Keys.PAGE_DOWN * 5)
         time.sleep(1)
 
+    return list_name
+
+
+def scrape_items(driver):
     print("Scraping entries")
     entries = []
     item_count = len(driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")) // 2
@@ -48,6 +56,16 @@ def main(list_url, headless):
         time.sleep(1)
 
         entries.append({"name": name, "coords": coords})
+
+    return entries
+
+
+def main(list_url, headless):
+    driver = initialize(headless)
+
+    list_name = load_list(driver, list_url)
+
+    entries = scrape_items(driver)
 
     driver.close()
 
