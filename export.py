@@ -3,6 +3,7 @@ import json
 import re
 import time
 
+from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver import Firefox
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
@@ -29,12 +30,16 @@ def load_list(driver, list_url):
     list_name = driver.find_element_by_tag_name("h1").text
 
     print(f"Loading items of list '{list_name}'")
-    previous_page = None
-    scrollbox = driver.find_element_by_class_name("section-scrollbox")
-    while previous_page is None or previous_page != driver.page_source:
-        previous_page = driver.page_source
-        scrollbox.send_keys(Keys.PAGE_DOWN * 5)
-        time.sleep(1)
+
+    try:
+        previous_page = None
+        scrollbox = driver.find_element_by_class_name("section-scrollbox")
+        while previous_page is None or previous_page != driver.page_source:
+            previous_page = driver.page_source
+            scrollbox.send_keys(Keys.PAGE_DOWN * 5)
+            time.sleep(1)
+    except ElementNotInteractableException:
+        pass
 
     return list_name
 
@@ -43,17 +48,18 @@ def scrape_items(driver):
     print("Scraping entries")
 
     item_count = len(driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")) // 2
+    print(f"Found {item_count} items")
 
     entries = []
     for i in range(item_count):
         driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")[i * 2].click()
 
-        time.sleep(1)
+        time.sleep(3)
         url = driver.current_url
 
         coords = re.findall(r"(-?\d+\.\d+)!4d(-?\d+\.\d+)", url)[0]
         name = driver.find_element_by_tag_name("h1").text
-        print(f"Item '{name}' at {','.join(coords)}")
+        print(f"({i + 1}/{item_count}) Location '{name}' at {','.join(coords)}")
 
         driver.find_element_by_class_name("omnibox-pane-container").click()
         time.sleep(1)
@@ -64,14 +70,14 @@ def scrape_items(driver):
 
 
 def slugify(word):
-    return "".join(c for c in word.lower().replace(" ", "-") if c.isalnum())
+    return "".join(c for c in word.lower().replace(" ", "-") if c.isalnum() or c == "-")
 
 
 def save(entries, list_name, format):
     if format == "json":
         filename = f"{slugify(list_name)}.json"
-        with open(filename, "w") as f:
-            json.dump(entries, f)
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(entries, f, ensure_ascii=False)
 
         print(f"Exported as '{filename}'")
 
