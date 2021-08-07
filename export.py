@@ -1,3 +1,4 @@
+import argparse
 import re
 import time
 
@@ -6,23 +7,23 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
 
 
-def main():
+def main(list_url, headless):
     print("Starting driver")
     options = Options()
-    options.headless = False
+    options.headless = headless
 
     driver = Firefox(options=options)
     driver.implicitly_wait(5)
 
     print("Going to Maps")
-    driver.get("")
+    driver.get(list_url)
 
     driver.find_elements_by_tag_name("button")[1].click()
     time.sleep(1)
 
-    list_name = driver.find_elements_by_tag_name("h1").text
+    list_name = driver.find_element_by_tag_name("h1").text
 
-    print(f"Loading items of list {list_name}")
+    print(f"Loading items of list '{list_name}'")
     previous_page = None
     scrollbox = driver.find_element_by_class_name("section-scrollbox")
     while previous_page is None or previous_page != driver.page_source:
@@ -41,7 +42,7 @@ def main():
 
         coords = re.findall(r"(-?\d+\.\d+)!4d(-?\d+\.\d+)", url)[0]
         name = driver.find_element_by_tag_name("h1").text
-        print(f"Found {name} at {', '.join(coords)}")
+        print(f"Item '{name}' at {','.join(coords)}")
 
         driver.find_element_by_class_name("omnibox-pane-container").click()
         time.sleep(1)
@@ -52,4 +53,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Export a Google Maps list (because Google doesn't let you).")
+
+    parser.add_argument("list_url", help="The share URL of the list.")
+    parser.add_argument("--with-head", action="store_true", help="Don't start the browser in headless mode.")
+
+    args = parser.parse_args()
+
+    main(args.list_url, not args.with_head)
