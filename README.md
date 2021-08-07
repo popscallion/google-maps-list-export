@@ -26,6 +26,12 @@ To download the items of the list as JSON:
 python export.py <link>
 ```
 
+Or as KML:
+
+```shell
+python export.py -f kml <link>
+```
+
 To show all available options:
 
 ```shell
