@@ -58,14 +58,14 @@ def scrape_items(driver):
         time.sleep(3)
         url = driver.current_url
 
-        coords = re.findall(r"(-?\d+\.\d+)!4d(-?\d+\.\d+)", url)[0]
+        lat, lon = re.findall(r"(-?\d+\.\d+)!4d(-?\d+\.\d+)", url)[0]
         name = driver.find_element_by_tag_name("h1").text
-        print(f"({i + 1}/{item_count}) Location '{name}' at {','.join(coords)}")
+        print(f"({i + 1}/{item_count}) Location '{name}' at {lat},{lon}")
 
         driver.find_element_by_class_name("omnibox-pane-container").click()
         time.sleep(1)
 
-        entries.append({"name": name, "coords": tuple(float(c) for c in coords)})
+        entries.append({"name": name, "lat": lat, "lon": lon})
 
     return entries
 
@@ -84,7 +84,7 @@ def save(entries, list_name, format):
     elif format == "kml":
         kml = simplekml.Kml()
         for entry in entries:
-            kml.newpoint(name=entry["name"], coords=[entry["coords"]])
+            kml.newpoint(name=entry["name"], coords=[(entry["lon"], entry["lat"])])
         kml.save(filename)
 
     else:
