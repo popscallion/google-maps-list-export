@@ -3,6 +3,7 @@ import json
 import re
 import time
 
+import simplekml
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver import Firefox
 from selenium.webdriver.common.keys import Keys
@@ -64,7 +65,7 @@ def scrape_items(driver):
         driver.find_element_by_class_name("omnibox-pane-container").click()
         time.sleep(1)
 
-        entries.append({"name": name, "coords": coords})
+        entries.append({"name": name, "coords": tuple(float(c) for c in coords)})
 
     return entries
 
@@ -74,12 +75,22 @@ def slugify(word):
 
 
 def save(entries, list_name, format):
+    filename = f"{slugify(list_name)}.{format}"
+
     if format == "json":
-        filename = f"{slugify(list_name)}.json"
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(entries, f, ensure_ascii=False)
 
-        print(f"Exported as '{filename}'")
+    elif format == "kml":
+        kml = simplekml.Kml()
+        for entry in entries:
+            kml.newpoint(name=entry["name"], coords=[entry["coords"]])
+        kml.save(filename)
+
+    else:
+        raise ValueError(f"Format {format} not supported.")
+
+    print(f"Exported as '{filename}'")
 
 
 def main(list_url, headless, format):
@@ -98,7 +109,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Export a Google Maps list (because Google doesn't let you).")
 
     parser.add_argument("list_url", help="The share URL of the list.")
-    parser.add_argument("-f", "--format", choices=["json"], nargs="?", default="json",
+    parser.add_argument("-f", "--format", choices=["json", "kml"], nargs="?", default="json",
                         help="Specify the export format. Default: json")
     parser.add_argument("--show-browser", action="store_true", help="Don't start the browser in headless mode.")
 
