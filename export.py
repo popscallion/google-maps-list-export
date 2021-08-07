@@ -20,7 +20,9 @@ def main():
     driver.find_elements_by_tag_name("button")[1].click()
     time.sleep(1)
 
-    print("Loading list items")
+    list_name = driver.find_elements_by_tag_name("h1").text
+
+    print(f"Loading items of list {list_name}")
     previous_page = None
     scrollbox = driver.find_element_by_class_name("section-scrollbox")
     while previous_page is None or previous_page != driver.page_source:
