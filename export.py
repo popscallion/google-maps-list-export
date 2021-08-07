@@ -1,4 +1,3 @@
-import pickle
 import re
 import time
 
@@ -10,22 +9,18 @@ from selenium.webdriver.firefox.options import Options
 def main():
     print("Starting driver")
     options = Options()
-    options.headless = True
+    options.headless = False
 
     driver = Firefox(options=options)
     driver.implicitly_wait(5)
-    driver.get("https://www.google.com")
-
-    with open("cookies.pkl", "rb") as f:
-        cookies = pickle.load(f)
-    for cookie in cookies:
-        driver.add_cookie(cookie)
 
     print("Going to Maps")
     driver.get("")
+
+    driver.find_elements_by_tag_name("button")[1].click()
     time.sleep(1)
 
-    print("Scrolling down")
+    print("Loading list items")
     previous_page = None
     scrollbox = driver.find_element_by_class_name("section-scrollbox")
     while previous_page is None or previous_page != driver.page_source:
@@ -37,7 +32,7 @@ def main():
     entries = []
     item_count = len(driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")) // 2
     for i in range(item_count):
-        item = driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")[i * 2].click()
+        driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")[i * 2].click()
 
         time.sleep(1)
         url = driver.current_url
