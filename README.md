@@ -15,3 +15,19 @@ For some reason Google does not provide a Maps list export function.
 ```shell
 pip install -r requirements.txt
 ```
+
+## Usage
+
+In Google Maps create a share link for your list and copy it.
+
+To download the items of the list as JSON:
+
+```shell
+python export.py <link>
+```
+
+To show all available options:
+
+```shell
+python export.py -h
+```
