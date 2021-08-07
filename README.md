@@ -2,6 +2,8 @@
 
 For some reason Google does not provide a Maps list export function.
 
+Supports KML and custom JSON.
+
 ## Requirements
 
 - Python 3.6+ with pip
