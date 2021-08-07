@@ -1,4 +1,5 @@
 import argparse
+import json
 import re
 import time
 
@@ -40,8 +41,10 @@ def load_list(driver, list_url):
 
 def scrape_items(driver):
     print("Scraping entries")
-    entries = []
+
     item_count = len(driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")) // 2
+
+    entries = []
     for i in range(item_count):
         driver.find_elements_by_xpath("//div[contains(@class,'section-scrollbox')]/div")[i * 2].click()
 
@@ -60,12 +63,27 @@ def scrape_items(driver):
     return entries
 
 
-def main(list_url, headless):
+def slugify(word):
+    return "".join(c for c in word.lower().replace(" ", "-") if c.isalnum())
+
+
+def save(entries, list_name, format):
+    if format == "json":
+        filename = f"{slugify(list_name)}.json"
+        with open(filename, "w") as f:
+            json.dump(entries, f)
+
+        print(f"Exported as '{filename}'")
+
+
+def main(list_url, headless, format):
     driver = initialize(headless)
 
     list_name = load_list(driver, list_url)
 
     entries = scrape_items(driver)
+
+    save(entries, list_name, format)
 
     driver.close()
 
@@ -74,8 +92,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Export a Google Maps list (because Google doesn't let you).")
 
     parser.add_argument("list_url", help="The share URL of the list.")
-    parser.add_argument("--with-head", action="store_true", help="Don't start the browser in headless mode.")
+    parser.add_argument("-f", "--format", choices=["json"], nargs="?", default="json",
+                        help="Specify the export format. Default: json")
+    parser.add_argument("--show-browser", action="store_true", help="Don't start the browser in headless mode.")
 
     args = parser.parse_args()
 
-    main(args.list_url, not args.with_head)
+    main(args.list_url, not args.show_browser, args.format)
