@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "argparse": "^2.0.1",
+    "chromedriver": "^110.0.0",
+    "node": "^19.6.0",
+    "selenium-webdriver": "^4.8.0"
+  }
+}
