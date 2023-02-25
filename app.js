@@ -24,6 +24,10 @@ class Scraper {
     title = ''
     headless = false
     length = 0
+    timing = {
+        'sleep':10,
+        'keyRepeat':0
+    }
     css = {
         'title':'h1',
         'subtitle':'h2.vkU5O',
@@ -34,10 +38,13 @@ class Scraper {
         'backButton':'button.hYBOP.FeXq4d',  
         'loadingSpinner':'.qjESne'
     }
-    constructor(listUrl, headless, css=this.css){
+    regex = {
+        'item': new RegExp('maps\/place'),
+        'list': new RegExp('maps\/@')
+    }
+    constructor(listUrl, headless, css=this.css, regex=this.regex, timing=this.timing){
         this.listUrl = listUrl
         this.headless = headless
-        this.css = css;
         return (async () => {
             this.driver = await this.getDriver();
             return this;
@@ -68,25 +75,23 @@ class Scraper {
             await this.finish(payload)
         }
     }
-    async awaitLoad(regex){
+    async impatientClick(regex, css, i=0){
+        let element =  (await this.driver.findElements(By.css(css)))[i]
         let url = await this.driver.getCurrentUrl() 
-        while (url.search(regex) == -1) {
-            url = await this.driver.getCurrentUrl() 
-            await new Promise(r => setTimeout(r, 100))
-            
-        }
-        return url
-    }
-    async impatientClick(regex, element){
-        let url = await this.driver.getCurrentUrl() 
-        while (url.search(regex) == -1) { 
+        while (url.search(regex)==-1) { 
             try {
                 await element.click() 
-            } catch (e) {
-                await new Promise(r => setTimeout(r, 100))                
-            } finally {
                 url = await this.driver.getCurrentUrl() 
-            }
+            } catch (e) {
+                if (e.name == 'ElementNotInteractableError') {
+                    await new Promise(r => setTimeout(r, this.timing.sleep)) 
+                    url = await this.driver.getCurrentUrl() 
+                }
+                else if (e.name == 'StaleElementReferenceError') {
+                    element =  (await this.driver.findElements(By.css(css)))[i]
+                }
+                else console.log(e);    
+            } 
         }
         return url
     }
@@ -97,6 +102,7 @@ class Scraper {
         console.log("Driver initialized!")
         return driver
     }
+
     async loadList() {
         await this.driver.get(this.listUrl)
         this.listUrl = await this.driver.getCurrentUrl() 
@@ -110,7 +116,8 @@ class Scraper {
         console.log(`Getting ${numPlaces} items from "${this.title}"`)
         const scrollbox = await this.driver.findElement(By.css(this.css.scrollBox))
         let items = await this.driver.findElements(By.css(this.css.item))
-        if (!items.length) {
+        let itemsLoaded = items.length
+        if (!itemsLoaded) {
             this.css.item = this.css.itemFallback
             items = await this.driver.findElements(By.css(this.css.item))            
         }
@@ -118,29 +125,33 @@ class Scraper {
         let source = await this.driver.getPageSource()
         console.log("Preloading...")
         while (source.search(regexSpinner)!=-1) {
+            if (items.length == itemsLoaded){
+                await scrollbox.sendKeys(Key.PAGE_DOWN)
+                itemsLoaded = items.length 
+                items = await this.driver.findElements(By.css(this.css.item)) 
+                await new Promise(r => setTimeout(r, this.timing.keyRepeat))
+            }
+            itemsLoaded = items.length 
             console.log(`Preloaded ${items.length} of ${numPlaces} places`)
-            await scrollbox.sendKeys(Key.PAGE_DOWN)
+            await new Promise(r => setTimeout(r, this.timing.sleep))
             source = await this.driver.getPageSource()
-            items = await this.driver.findElements(By.css(this.css.item))   
         }
         this.length = items.length
         return 
     }
+
+
     async loopPlaces() {
         console.log("Scraping places...");
         let result = []
-        let backButton
-        let items
         for (let i = 0 ; i < this.length ; i++) {
-            items = await this.driver.findElements(By.css(this.css.item))
-            const itemUrl = await this.impatientClick(/\/maps\/place\//,items[i])
+            const itemUrl = await this.impatientClick(this.regex.item,this.css.item, i)
             const splits = itemUrl.split('/')
             const name = decodeURIComponent(splits[5].replace(/(\+)/g,' '))
             const [lat,lon] = splits[6].replace(/(@)/g,'').split(',',2)
             console.log(`${name} (${lat}, ${lon}) | [${i+1}/${this.length}]`);
             result.push({"name":name, "coords":[lat, lon], "url":itemUrl})      
-            backButton = await this.driver.findElement(By.css(this.css.backButton))
-            await this.impatientClick(/\/maps\/@/,backButton)
+            await this.impatientClick(this.regex.list,this.css.backButton, 0)
         }
         return result
     }
